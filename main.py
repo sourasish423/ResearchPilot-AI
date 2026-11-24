@@ -61,13 +61,22 @@ user_query = input("What would you like to research? ")
 
 messages = [
     {
+
         "role": "system",
         "content": (
-            "You are a research assistant. Use the retrieved webpage "
-            "content to answer the user's question. Consider all available "
-            "sources, include their URLs as citations, distinguish "
-            "conflicting information, and never invent facts or URLs. "
-            "If the sources do not support an answer, say so."
+            "You are an evidence-based research assistant. "
+            "Answer ONLY using information explicitly stated in the "
+            "retrieved webpage content provided in this conversation. "
+            "Treat retrieved webpage content as your only factual evidence. "
+            "Do not use your pre-trained knowledge to fill in missing facts. "
+            "If the retrieved sources do not contain the answer, say "
+            "'The retrieved sources do not provide this information.' "
+            "Every factual claim must include an inline citation using "
+            "the source IDs, such as [1] or [2]. "
+            "Only cite source IDs that were actually provided. "
+            "Do not invent facts or citations. "
+            "If sources conflict, explain the conflict. "
+            "Do not generate a Sources list or URLs; Python will attach them."
         )
     },
     {
@@ -116,10 +125,8 @@ def execute_tool(tool_call):
     
 
 
-
-
-
 #execute each requested tool
+sources = []
 search_failed = False
 while response.message.tool_calls:#Check whether Llama has requested a tool.
 
@@ -169,18 +176,26 @@ while response.message.tool_calls:#Check whether Llama has requested a tool.
                     print("No readable content. Skipping this source.")
                     continue #his prevents empty webpage content from being treated as useful research evidence.
                 
+                source_id = len(sources) + 1#If one source has already been stored, the next ID becomes 2.
                 messages.append({
                      "role": "tool",
                      "tool_name": "read_webpage",
                      "content": (
-                     f"Source: {article_title}\n"
-                     f"URL: {article_url}\n\n"
-                     f"{page_content}"
-                     )
-
-                     })
+                        f"Source ID: [{source_id}]\n"
+                        f"Source: {article_title}\n"
+                        f"URL: {article_url}\n\n"
+                        f"{page_content}"
+                        )
+                    })
+                                                      
                 sources_read += 1
-            
+
+                sources.append({
+                    "id": source_id,
+                    "title": article_title,
+                    "url": article_url
+                })
+                            
 
     if search_failed:
         break
@@ -193,7 +208,15 @@ while response.message.tool_calls:#Check whether Llama has requested a tool.
     )
 
 if not search_failed:
-    print(response.message.content)
+    answer = response.message.content
+    print(answer)
+
+    if sources:
+        print("\nSources:")
+
+        for source in sources:
+            print(f"[{source['id']}] {source['title']}")
+            print(source['url'])
 
 
 # function_name = "multiply"
