@@ -1,7 +1,9 @@
+import re
 from ollama import chat
 from calculator import add, multiply
 from web_tools import web_search
 from web_reader import read_webpage
+
 
 # Define available tools
 tools = [
@@ -209,6 +211,18 @@ while response.message.tool_calls:#Check whether Llama has requested a tool.
 
 if not search_failed:
     answer = response.message.content
+
+    cient_ids=set(re.findall(r"\[(d+)]",answer)) #extract ids from llama's answer 
+    cited_ids={int(i) for i in cited_ids}#converting those id's into integer
+
+    available_ids={source["id"] for source in sources}#ids which python provides
+
+    invalid_ids=cited_ids-available_ids
+
+    if invalid_ids:
+        print("Warning :Invalid citations",invalid_ids)
+
+
     print(answer)
 
     if sources:
